@@ -168,6 +168,7 @@ class VLMEngine:
         payload: dict[str, Any] = {
             "model": self.config.model,
             "temperature": self.config.temperature,
+            "enable_thinking": False,
             "messages": [
                 {
                     "role": "user",
