@@ -1,0 +1,95 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pagetract"
+version = "0.1.0"
+description = "高精度 PDF 文档转 Markdown 系统，基于 CV 布局检测 + VLM 全页理解的混合架构"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [
+    { name = "pagetract contributors" },
+]
+keywords = ["pdf", "markdown", "ocr", "vlm", "document-conversion"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Text Processing :: Markup :: Markdown",
+]
+dependencies = [
+    "PyMuPDF>=1.24.0",
+    "Pillow>=10.0.0",
+    "httpx>=0.27.0",
+    "openai>=1.0.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "PyYAML>=6.0",
+    "typer[all]>=0.12.0",
+    "rich>=13.0.0",
+    "deskew>=1.5.0",
+    "numpy>=1.24.0",
+]
+
+[project.optional-dependencies]
+api = [
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.27.0",
+    "python-multipart>=0.0.9",
+]
+demo = [
+    "gradio>=4.0.0",
+]
+layout = [
+    "ultralytics>=8.1.0",
+    "doclayout-yolo>=0.0.1",
+]
+validation = [
+    "paddleocr>=2.7.0",
+    "paddlepaddle>=2.6.0",
+]
+all = [
+    "pagetract[api,demo,layout,validation]",
+]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "ruff>=0.3.0",
+    "pyright>=1.1.0",
+]
+
+[project.scripts]
+pagetract = "pagetract.cli:app"
+
+[project.urls]
+Homepage = "https://github.com/tianzheng-zhou/pagetract"
+Documentation = "https://github.com/tianzheng-zhou/pagetract#readme"
+Repository = "https://github.com/tianzheng-zhou/pagetract"
+Issues = "https://github.com/tianzheng-zhou/pagetract/issues"
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pagetract"]
+
+[tool.pyright]
+pythonVersion = "3.10"
+typeCheckingMode = "basic"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["src"]

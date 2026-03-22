@@ -1,0 +1,123 @@
+# pagetract 配置文件
+
+# 全局设置
+general:
+  render_dpi: 300
+  page_range: null
+  output_dir: "./output"
+  document_context: ""
+
+# PDF 类型检测
+pdf_detection:
+  force_mode: null
+  text_quality_threshold: 0.7
+  min_text_chars: 20
+  formula_font_patterns:
+    - "CMMI"
+    - "CMBX"
+    - "Cambria Math"
+    - "STIXGeneral"
+
+# 页面预处理
+preprocessing:
+  enable_rotation_correction: true
+  enable_deskew: true
+  deskew_threshold_degrees: 0.5
+  enable_inversion_detection: true
+
+# 渲染设置
+render:
+  render_dpi: 300
+  image_format: "png"
+  max_page_height_px: 4000
+  split_height: 3200
+  split_overlap: 200
+
+# 布局检测
+layout:
+  engine: "doclayout-yolo"
+  confidence_threshold: 0.5
+  merge_adjacent_text: true
+  detect_reading_order: true
+  detect_columns: true
+  discard_types:
+    - header
+    - footer
+    - page_number
+
+# VLM OCR
+vlm:
+  provider: "dashscope"
+  api_base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+  api_key: "${SCANDOC_API_KEY}"
+  model: "qwen-vl-max"
+  temperature: 0.1
+  max_concurrent: 15
+  connection_pool_size: 20
+  max_retries: 3
+  timeout: 60
+  recognition_mode: "full_page"
+  vlm_downsample_ratio: 0.7
+  batch_regions: true
+  max_regions_per_batch: 5
+  max_region_distance: 500
+  complexity_threshold: 15
+  enable_output_validation: true
+  generate_image_alt: true
+  custom_prompts: {}
+  document_context: ""
+
+# 原生文本提取
+native_extract:
+  fallback_to_vlm: true
+  formula_font_patterns:
+    - "CMMI"
+    - "CMBX"
+    - "Cambria Math"
+  garbled_text_threshold: 0.05
+
+# 图片提取
+image_extraction:
+  format: "png"
+  quality: 95
+  min_size: 50
+  padding: 5
+  save_table_images: true
+  prefer_embedded: true
+
+# 缓存
+cache:
+  enable: true
+  directory: "./cache"
+  max_size_mb: 500
+  eviction_policy: "lru"
+  layout_cache_ttl_hours: 24
+  vlm_cache_ttl_days: 7
+  document_cache_ttl_days: 30
+
+# Markdown 输出
+markdown:
+  page_separator: "\n\n---\n\n"
+  include_page_markers: true
+  include_source_markers: true
+  image_ref_style: "relative"
+  title_level_strategy: "auto"
+  discard_header_footer: true
+
+# 成本控制
+cost_control:
+  enable_cost_estimation: true
+  budget_limit_yuan: null
+
+# API 服务
+api:
+  host: "0.0.0.0"
+  port: 34045
+  max_file_size_mb: 100
+  max_pages: 200
+  async_threshold_pages: 10
+  task_ttl_hours: 24
+
+# 内存控制
+memory:
+  max_cached_pages: 3
