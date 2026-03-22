@@ -50,7 +50,7 @@ vlm:
   provider: "dashscope"
   api_base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
   api_key: "${SCANDOC_API_KEY}"
-  model: "qwen-vl-max"
+  model: "qwen3.5-plus"
   temperature: 0.1
   max_concurrent: 15
   connection_pool_size: 20
@@ -62,7 +62,7 @@ vlm:
   max_regions_per_batch: 5
   max_region_distance: 500
   complexity_threshold: 15
-  enable_output_validation: true
+  enable_output_validation: false
   generate_image_alt: true
   custom_prompts: {}
   document_context: ""

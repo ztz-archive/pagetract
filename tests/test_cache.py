@@ -27,9 +27,9 @@ def test_cache_layout():
 def test_cache_vlm():
     with tempfile.TemporaryDirectory() as tmpdir:
         cache = CacheManager(CacheConfig(enable=True, directory=tmpdir))
-        cache.set_vlm("hash1", 1, (0, 0, 100, 50), "text", "qwen-vl-max", "Hello World")
+        cache.set_vlm("hash1", 1, (0, 0, 100, 50), "text", "qwen3.5-plus", "Hello World")
 
-        result = cache.get_vlm("hash1", 1, (0, 0, 100, 50), "text", "qwen-vl-max")
+        result = cache.get_vlm("hash1", 1, (0, 0, 100, 50), "text", "qwen3.5-plus")
         assert result == "Hello World"
 
 

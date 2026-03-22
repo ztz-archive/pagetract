@@ -175,7 +175,7 @@ def config_init():
 
     # 交互式配置关键项
     provider = typer.prompt("VLM Provider", default="dashscope")
-    model = typer.prompt("VLM Model", default="qwen-vl-max")
+    model = typer.prompt("VLM Model", default="qwen3.5-plus")
     api_base = typer.prompt(
         "API Base URL",
         default="https://dashscope.aliyuncs.com/compatible-mode/v1",

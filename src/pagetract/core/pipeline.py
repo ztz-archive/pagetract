@@ -20,7 +20,7 @@ from pagetract.core.pdf_detector import PDFTypeDetector
 from pagetract.core.preprocessor import PagePreprocessor
 from pagetract.core.region_dispatcher import RegionDispatcher, crop_with_padding
 from pagetract.core.renderer import PDFRenderer
-from pagetract.core.vlm_engine import VLMEngine, VLMResponseValidator
+from pagetract.core.vlm_engine import VLMEngine
 from pagetract.models import (
     BlockType,
     ConversionMetadata,
@@ -47,7 +47,6 @@ class Pipeline:
         self.layout_detector = LayoutDetector(config.layout)
         self.dispatcher = RegionDispatcher(config.vlm)
         self.vlm_engine = VLMEngine(config.vlm)
-        self.vlm_validator = VLMResponseValidator()
         self.image_saver = ImageSaver(config.image_extraction)
         self.assembler = MarkdownAssembler(config.markdown)
         self.cache = CacheManager(config.cache)
@@ -326,12 +325,6 @@ class Pipeline:
                                     int(bbox[1] / ratio),
                                     int(bbox[2] / ratio),
                                     int(bbox[3] / ratio),
-                                )
-
-                            # 校验
-                            if self.config.vlm.enable_output_validation:
-                                res = self.vlm_validator.validate(
-                                    res, btype, bbox, page_img.image
                                 )
 
                             block = ProcessedBlock(

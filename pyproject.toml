@@ -52,12 +52,8 @@ layout = [
     "ultralytics>=8.1.0",
     "doclayout-yolo>=0.0.1",
 ]
-validation = [
-    "paddleocr>=2.7.0",
-    "paddlepaddle>=2.6.0",
-]
 all = [
-    "pagetract[api,demo,layout,validation]",
+    "pagetract[api,demo,layout]",
 ]
 dev = [
     "pytest>=8.0.0",

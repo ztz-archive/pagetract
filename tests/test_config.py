@@ -18,7 +18,7 @@ from pagetract.config import (
 def test_default_config():
     cfg = PagetractConfig()
     assert cfg.general.render_dpi == 300
-    assert cfg.vlm.model == "qwen-vl-max"
+    assert cfg.vlm.model == "qwen3.5-plus"
     assert cfg.cache.enable is True
     assert cfg.layout.engine == "doclayout-yolo"
 
@@ -49,9 +49,9 @@ def test_load_config_default():
 def test_load_config_with_overrides():
     cfg = load_config(
         config_path="nonexistent.yaml",
-        overrides={"vlm": {"model": "gpt-4o"}},
+        overrides={"vlm": {"model": "qwen3.5-plus"}},
     )
-    assert cfg.vlm.model == "gpt-4o"
+    assert cfg.vlm.model == "qwen3.5-plus"
 
 
 def test_save_and_load_config():

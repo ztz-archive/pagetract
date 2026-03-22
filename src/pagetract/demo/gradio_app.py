@@ -94,8 +94,8 @@ def create_demo():
                 )
                 with gr.Accordion("转换选项", open=False):
                     model_input = gr.Dropdown(
-                        choices=["qwen-vl-max", "gpt-4o", "gemini-2.5-pro"],
-                        value="qwen-vl-max",
+                        choices=["qwen3.5-plus"],
+                        value="qwen3.5-plus",
                         label="VLM 模型",
                     )
                     dpi_input = gr.Slider(

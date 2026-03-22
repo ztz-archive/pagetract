@@ -50,7 +50,7 @@ class VLMConfig(BaseModel):
     provider: str = "dashscope"
     api_base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
     api_key: str = ""
-    model: str = "qwen-vl-max"
+    model: str = "qwen3.5-plus"
     temperature: float = 0.1
     max_concurrent: int = 15
     connection_pool_size: int = 20
@@ -62,7 +62,7 @@ class VLMConfig(BaseModel):
     max_regions_per_batch: int = 5
     max_region_distance: int = 500
     complexity_threshold: int = 15
-    enable_output_validation: bool = True
+    enable_output_validation: bool = False
     generate_image_alt: bool = True
     custom_prompts: dict[str, str] = Field(default_factory=dict)
     document_context: str = ""
