@@ -8,7 +8,7 @@
 |------|------|----------|
 | v1.0 | — | 初版，聚焦扫描件 PDF |
 | v2.0 | 2026-03-22 | 扩展为通用 PDF 处理；新增 API 服务与 Demo 网站；整页+坐标送 VLM 策略 |
-| v2.1 | 2026-03-22 | 多专家评审优化：新增页面预处理/缓存/流水线并行/成本控制/跨页合并/VLM 输出校验/多语言支持/安全加固等 |
+| v2.1 | 2026-03-22 | 多专家评审优化：新增页面预处理/缓存/流水线并行/成本控制/跨页合并/VLM 输出校验/多语言支持等 |
 
 ---
 
@@ -82,9 +82,6 @@ ScanDoc2MD 提供以下三种使用方式：
 ```
 输入: 任意 PDF 文档
   │
-  ▼
-[模块P] PDF 安全检查 + 打开
-  │  检查加密/损坏/恶意内容，尝试修复
   ▼
 [模块Z] PDF 类型检测器
   │  逐页判断：page_type = "scanned" | "native" | "mixed"
@@ -181,42 +178,6 @@ output/
 ---
 
 ## 3. 模块详细设计
-
-### 3.0 模块P：PDF 安全检查与打开（新增）
-
-**职责**：安全地打开 PDF 文件，处理加密、损坏、恶意内容等异常情况。
-
-**处理逻辑**：
-
-```python
-class PDFSecurityHandler:
-    def open_safe(self, pdf_path: str, password: str | None = None) -> SafeOpenResult:
-        """
-        安全打开 PDF，处理以下情况:
-        1. 加密 PDF → 尝试用户提供的密码 / 尝试空密码 / 报错引导
-        2. 损坏 PDF → 尝试自动修复（通过 gs/qpdf），失败则报错
-        3. PDF 炸弹 → 检测异常页数(>100k)或异常渲染大小(>10GB)
-        4. 嵌入 JavaScript → 警告（PyMuPDF 不执行，但需要提醒）
-        """
-        ...
-
-@dataclass
-class SafeOpenResult:
-    document: fitz.Document
-    warnings: list[str]         # 安全警告
-    was_repaired: bool          # 是否经过修复
-    was_decrypted: bool         # 是否经过解密
-```
-
-**配置项**：
-
-| 参数 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `pdf_password` | str \| None | None | PDF 密码 |
-| `auto_repair` | bool | True | 尝试自动修复损坏 PDF |
-| `max_pages_limit` | int | 10000 | 页数上限，超过视为异常 |
-
----
 
 ### 3.1 模块Z：PDF 类型检测器
 
@@ -1074,16 +1035,7 @@ GET /api/v1/health
 }
 ```
 
-### 5.3 认证与安全
-
-- **API Key 认证**：通过 `Authorization: Bearer <api_key>` 传递
-- **认证默认开启**：`authentication_enabled: true`，需配置 `api_keys` 列表。显式设为 `false` 才关闭（开发模式）
-- **速率限制**：按 API Key 限制，响应头包含 `X-RateLimit-Limit`、`X-RateLimit-Remaining`、`X-RateLimit-Reset`
-- **文件校验**：MIME 类型 + 文件大小 + PDF 安全检查（模块P）
-- **CORS**：生产环境需配置允许的来源
-- **回调签名**：callback_url 请求附带 `X-Signature-256: HMAC-SHA256(body, api_secret)`
-
-### 5.4 统一错误格式
+### 5.3 统一错误格式
 
 ```json
 {
@@ -1095,9 +1047,9 @@ GET /api/v1/health
 }
 ```
 
-常见错误码：`413 Payload Too Large`、`415 Unsupported Media Type`、`404 Not Found`、`429 Too Many Requests`、`401 Unauthorized`、`403 Forbidden`
+常见错误码：`413 Payload Too Large`、`415 Unsupported Media Type`、`404 Not Found`
 
-### 5.5 API 配置项
+### 5.4 API 配置项
 
 | 参数 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
@@ -1107,10 +1059,6 @@ GET /api/v1/health
 | `max_pages` | int | 200 | 单次转换最大页数 |
 | `async_threshold_pages` | int | 10 | 超过此页数自动切换异步模式 |
 | `task_ttl_hours` | int | 24 | 任务结果保留时长 |
-| `cors_origins` | list[str] | ["*"] | CORS 允许来源 |
-| `rate_limit` | str | "10/minute" | 速率限制 |
-| `authentication_enabled` | bool | True | 是否启用认证 |
-| `api_keys` | list[str] | [] | 允许的 API Key 列表 |
 
 ---
 
@@ -1176,12 +1124,6 @@ general:
   page_range: null
   output_dir: "./output"
   document_context: ""
-
-# PDF 安全与打开
-pdf:
-  password: null
-  auto_repair: true
-  max_pages_limit: 10000
 
 # PDF 类型检测
 pdf_detection:
@@ -1268,10 +1210,6 @@ api:
   max_pages: 200
   async_threshold_pages: 10
   task_ttl_hours: 24
-  cors_origins: ["*"]
-  rate_limit: "10/minute"
-  authentication_enabled: true
-  api_keys: []
 
 # 内存控制
 memory:
@@ -1424,14 +1362,14 @@ print(f"预估成本: ¥{estimate.cost_yuan}, 耗时: {estimate.time_seconds}s")
 
 ```python
 from scandoc2md import (
-    PDFSecurityHandler, PDFTypeDetector, PagePreprocessor,
+    PDFTypeDetector, PagePreprocessor,
     PDFRenderer, LayoutDetector, VLMEngine, 
     CrossPageAggregator, MarkdownAssembler
 )
+import fitz
 
-# Step 0: 安全打开
-handler = PDFSecurityHandler()
-doc, warnings = handler.open_safe("input.pdf")
+# Step 0: 打开 PDF
+doc = fitz.open("input.pdf")
 
 # Step 1: 类型检测
 detector = PDFTypeDetector()
@@ -1547,42 +1485,33 @@ markdown = assembler.assemble(merged, output_dir="./output")
 
 ## 12. 错误处理与鲁棒性
 
-### 12.1 PDF 打开异常
-
-- 加密 PDF → 尝试空密码 / 用户提供密码 / 报错引导
-- 损坏 PDF → 尝试自动修复（gs/qpdf）→ 失败则报错
-- PDF 炸弹 → 检测异常页数/渲染大小，拒绝处理
-- 恶意 JS → 警告（PyMuPDF 不执行 JS，但提醒用户）
-
-### 12.2 VLM 调用失败
+### 12.1 VLM 调用失败
 
 - 单次超时 → 自动重试（指数退避，最多 max_retries 次）
 - 连续失败 → 记录到 metadata.json，在 Markdown 中插入 `[OCR_FAILED: page X, block Y]`
-- 速率限制 → 429 + 指数退避重试
 - VLM 输出校验失败 → 重试一次，仍失败则标记警告并保留结果
 
-### 12.3 VLM 不遵守坐标指令
+### 12.2 VLM 不遵守坐标指令
 
 - 使用 PaddleOCR 对裁剪区域做快速对比
 - 词汇重叠率 < 60% → 标记为 `validation_passed=False`
 - 表格行数异常 → 标记警告
 - 可配置为自动重试或回退到 crop 模式
 
-### 12.4 布局检测异常
+### 12.3 布局检测异常
 
 - 某页检测不到任何区域 → 回退到整页送 VLM
 - 区域严重重叠 → NMS 去重
 - 区域超出页面边界 → 裁剪到边界内
 - 超长页面 → 自动分割处理
 
-### 12.5 输入校验
+### 12.4 输入校验
 
 - 非 PDF 文件 → 报错
 - 空白页 → 跳过，日志记录
-- 加密 PDF → 引导解密
 - 超大文件 (>1000页) → 警告并建议分批 / 检查预算限制
 
-### 12.6 API 服务错误
+### 12.5 API 服务错误
 
 统一错误格式（见 5.4），包含错误码、消息、详情。所有 500 错误附带追踪 ID。
 
@@ -1676,7 +1605,6 @@ scandoc2md/
 │   │   └── scandoc2md/
 │   │       ├── __init__.py
 │   │       ├── core/
-│   │       │   ├── pdf_security.py        # 模块P: PDF 安全检查
 │   │       │   ├── pdf_detector.py        # 模块Z: PDF 类型检测
 │   │       │   ├── preprocessor.py        # 模块G: 页面预处理
 │   │       │   ├── renderer.py            # 模块A: PDF 渲染器
@@ -1761,7 +1689,7 @@ scandoc2md/
 | 学术论文 | 双栏，含公式/表格/引用 | 正确阅读顺序 + LaTeX + Markdown 表格 |
 | 旋转扫描件 | 旋转 90° 的扫描 PDF | 自动校正后正确识别 |
 | 跨页表格 | 表格跨 2 页 | 合并为一个完整表格 |
-| 加密 PDF | 有密码保护 | 引导用户提供密码或报友好错误 |
+| 加密 PDF | 有密码保护 | 报友好错误提示 |
 | 超长页面 | 高度 > 4000px | 自动分割处理 |
 | 重复处理 | 同一 PDF 处理两次 | 第二次秒级返回（缓存命中） |
 | API 转换 | 通过 API 上传 | SSE 推送进度 + 正确结果 |
@@ -1818,26 +1746,21 @@ $$
 ```bash
 # 上传并转换
 curl -X POST http://localhost:8000/api/v1/convert \
-  -H "Authorization: Bearer your-api-key" \
   -F "file=@paper.pdf" \
   -F 'config={"vlm": {"model": "qwen-vl-max"}, "general": {"render_dpi": 300}}'
 
 # SSE 实时进度（替代轮询）
-curl -N http://localhost:8000/api/v1/tasks/{task_id}/events \
-  -H "Authorization: Bearer your-api-key"
+curl -N http://localhost:8000/api/v1/tasks/{task_id}/events
 
 # 成本预估
 curl -X POST http://localhost:8000/api/v1/estimate \
-  -H "Authorization: Bearer your-api-key" \
   -F "file=@paper.pdf"
 
 # 取消任务
-curl -X DELETE http://localhost:8000/api/v1/tasks/{task_id} \
-  -H "Authorization: Bearer your-api-key"
+curl -X DELETE http://localhost:8000/api/v1/tasks/{task_id}
 
 # 下载结果
-curl -O http://localhost:8000/api/v1/files/{task_id}/result.zip \
-  -H "Authorization: Bearer your-api-key"
+curl -O http://localhost:8000/api/v1/files/{task_id}/result.zip
 ```
 
 ### 使用 Python SDK 调用
