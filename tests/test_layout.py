@@ -26,6 +26,32 @@ def test_nms():
     assert len(result) == 2  # 重叠的应该被去掉
 
 
+def test_nms_containment():
+    """测试包含关系去重：小框在大框内部应被抑制"""
+    blocks = [
+        # 大框
+        LayoutBlock(BlockType.TEXT, (0, 0, 1000, 500), confidence=0.9),
+        # 小框完全在大框内部（IoU 低但包含率高）
+        LayoutBlock(BlockType.TEXT, (200, 100, 800, 400), confidence=0.7),
+        # 不相关的框
+        LayoutBlock(BlockType.IMAGE, (0, 600, 500, 900), confidence=0.85),
+    ]
+    result = LayoutDetector._nms(blocks, iou_threshold=0.5, containment_threshold=0.7)
+    assert len(result) == 2  # 小框被包含抑制
+
+
+def test_containment_computation():
+    # 完全包含
+    a = (0, 0, 1000, 500)
+    b = (200, 100, 800, 400)
+    assert LayoutDetector._compute_containment(a, b) > 0.99
+
+    # 不重叠
+    a = (0, 0, 100, 100)
+    b = (200, 200, 300, 300)
+    assert LayoutDetector._compute_containment(a, b) == 0.0
+
+
 def test_iou():
     a = (0, 0, 100, 100)
     b = (0, 0, 100, 100)

@@ -147,6 +147,9 @@ class Pipeline:
                 )
                 all_processed.extend(fallback_blocks)
 
+        # 3d. 同页块去重（移除布局检测产生的重叠区域）
+        all_processed = self._deduplicate_same_page_blocks(all_processed)
+
         # 4. 跨页合并
         self._report_progress(stage="merging cross-page elements")
         aggregator = CrossPageAggregator(page_heights=page_heights)
@@ -465,6 +468,72 @@ class Pipeline:
                 ))
 
         return blocks
+
+    # ----------------------------------------------------------
+    # 同页块去重
+    # ----------------------------------------------------------
+
+    @staticmethod
+    def _deduplicate_same_page_blocks(
+        blocks: list[ProcessedBlock],
+        containment_threshold: float = 0.6,
+    ) -> list[ProcessedBlock]:
+        """移除同页内 bbox 高度重叠的冗余块，保留内容更完整的"""
+        if len(blocks) <= 1:
+            return blocks
+
+        # 按页分组
+        pages: dict[int, list[ProcessedBlock]] = {}
+        for b in blocks:
+            pages.setdefault(b.page_number, []).append(b)
+
+        result: list[ProcessedBlock] = []
+        for page_num, page_blocks in pages.items():
+            if len(page_blocks) <= 1:
+                result.extend(page_blocks)
+                continue
+
+            suppressed: set[int] = set()
+            for i in range(len(page_blocks)):
+                if i in suppressed:
+                    continue
+                for j in range(i + 1, len(page_blocks)):
+                    if j in suppressed:
+                        continue
+                    bi, bj = page_blocks[i], page_blocks[j]
+                    overlap = Pipeline._bbox_containment(bi.bbox, bj.bbox)
+                    if overlap > containment_threshold:
+                        # 保留内容更长/更完整的那个
+                        len_i = len(bi.content or "")
+                        len_j = len(bj.content or "")
+                        if len_i >= len_j:
+                            suppressed.add(j)
+                        else:
+                            suppressed.add(i)
+                            break  # i 已被压制
+
+            for i, b in enumerate(page_blocks):
+                if i not in suppressed:
+                    result.append(b)
+
+        return result
+
+    @staticmethod
+    def _bbox_containment(
+        a: tuple[int, int, int, int], b: tuple[int, int, int, int]
+    ) -> float:
+        """计算包含率: intersection / min(area_a, area_b)"""
+        x1 = max(a[0], b[0])
+        y1 = max(a[1], b[1])
+        x2 = min(a[2], b[2])
+        y2 = min(a[3], b[3])
+        if x2 <= x1 or y2 <= y1:
+            return 0.0
+        intersection = (x2 - x1) * (y2 - y1)
+        area_a = (a[2] - a[0]) * (a[3] - a[1])
+        area_b = (b[2] - b[0]) * (b[3] - b[1])
+        min_area = min(area_a, area_b)
+        return intersection / min_area if min_area > 0 else 0.0
 
     # ----------------------------------------------------------
     # 成本预估

@@ -283,7 +283,11 @@ class LayoutDetector:
     # ----------------------------------------------------------
 
     @staticmethod
-    def _nms(blocks: list[LayoutBlock], iou_threshold: float = 0.5) -> list[LayoutBlock]:
+    def _nms(
+        blocks: list[LayoutBlock],
+        iou_threshold: float = 0.5,
+        containment_threshold: float = 0.7,
+    ) -> list[LayoutBlock]:
         if len(blocks) <= 1:
             return blocks
 
@@ -295,6 +299,11 @@ class LayoutDetector:
             for kept in keep:
                 iou = LayoutDetector._compute_iou(block.bbox, kept.bbox)
                 if iou > iou_threshold:
+                    should_keep = False
+                    break
+                # 包含关系检查：一个框大部分在另一个框内，压制低置信度的
+                containment = LayoutDetector._compute_containment(block.bbox, kept.bbox)
+                if containment > containment_threshold:
                     should_keep = False
                     break
             if should_keep:
@@ -320,3 +329,23 @@ class LayoutDetector:
         union = area_a + area_b - intersection
 
         return intersection / union if union > 0 else 0.0
+
+    @staticmethod
+    def _compute_containment(
+        a: tuple[int, int, int, int], b: tuple[int, int, int, int]
+    ) -> float:
+        """计算包含率：intersection / min(area_a, area_b)，检测一个框被另一个框包含的情况"""
+        x1 = max(a[0], b[0])
+        y1 = max(a[1], b[1])
+        x2 = min(a[2], b[2])
+        y2 = min(a[3], b[3])
+
+        if x2 <= x1 or y2 <= y1:
+            return 0.0
+
+        intersection = (x2 - x1) * (y2 - y1)
+        area_a = (a[2] - a[0]) * (a[3] - a[1])
+        area_b = (b[2] - b[0]) * (b[3] - b[1])
+        min_area = min(area_a, area_b)
+
+        return intersection / min_area if min_area > 0 else 0.0
