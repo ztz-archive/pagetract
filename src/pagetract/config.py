@@ -130,6 +130,35 @@ class NativeExtractConfig(BaseModel):
     garbled_text_threshold: float = 0.05
 
 
+class VideoConfig(BaseModel):
+    download_dir: str = "./cache/video"
+    cookies_from_browser: str | None = None
+
+    # 音频转录 (STT)
+    stt_model: str = "sensevoice-v1"
+    stt_api_base_url: str = ""    # 空 = 复用 vlm.api_base_url
+    stt_api_key: str = ""          # 空 = 复用 vlm.api_key
+    audio_format: str = "mp3"
+    audio_chunk_seconds: int = 600  # 10 分钟一段
+
+    # 视频理解
+    video_model: str = ""           # 空 = 复用 vlm.model
+    max_key_frames: int = 20
+    frame_interval_seconds: int = 30
+
+    # Prompt
+    understanding_prompt: str = (
+        "以下是视频《{title}》的 {num_frames} 个等间距关键帧截图\uff08视频时长约 {duration} 秒\uff09。\n"
+        "视频简介\uff1a{description}\n\n"
+        "请基于这些关键帧\uff0c详细分析并描述视频的完整内容\uff0c包括\uff1a\n"
+        "1. 视频的主题和核心内容\n"
+        "2. 视频中出现的关键信息\uff08文字、数据、图表、代码等\uff09\n"
+        "3. 视频的结构和叙事顺序\n"
+        "4. 重要的视觉元素和场景\n\n"
+        "请以结构化的 Markdown 格式输出\uff0c使用适当的标题层级组织内容。"
+    )
+
+
 # ============================================================
 # 根配置
 # ============================================================
@@ -148,6 +177,7 @@ class PagetractConfig(BaseModel):
     api: APIConfig = Field(default_factory=APIConfig)
     memory: MemoryConfig = Field(default_factory=MemoryConfig)
     native_extract: NativeExtractConfig = Field(default_factory=NativeExtractConfig)
+    video: VideoConfig = Field(default_factory=VideoConfig)
 
 
 # ============================================================

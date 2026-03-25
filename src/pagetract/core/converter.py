@@ -8,7 +8,7 @@ from typing import Any
 
 from pagetract.config import PagetractConfig, load_config
 from pagetract.core.pipeline import Pipeline
-from pagetract.models import ConversionResult, CostEstimate
+from pagetract.models import ConversionResult, CostEstimate, VideoConversionResult
 
 
 class PageTract:
@@ -78,3 +78,38 @@ class PageTract:
     def set_progress_callback(self, callback):
         """设置进度回调函数"""
         self._pipeline.set_progress_callback(callback)
+
+    # ----------------------------------------------------------
+    # 视频转换
+    # ----------------------------------------------------------
+
+    def convert_video(
+        self,
+        url: str,
+        output_dir: str | Path | None = None,
+        audio_only: bool = False,
+        video_only: bool = False,
+    ) -> VideoConversionResult:
+        """同步转换视频 → 两份 Markdown（音频转录 + 视频理解）"""
+        output_dir = str(output_dir or self._config.general.output_dir)
+        return asyncio.get_event_loop().run_until_complete(
+            self.aconvert_video(url, output_dir, audio_only, video_only)
+        )
+
+    async def aconvert_video(
+        self,
+        url: str,
+        output_dir: str | Path | None = None,
+        audio_only: bool = False,
+        video_only: bool = False,
+    ) -> VideoConversionResult:
+        """异步转换视频 → 两份 Markdown（音频转录 + 视频理解）"""
+        from pagetract.core.video_processor import VideoProcessor
+
+        output_dir = str(output_dir or self._config.general.output_dir)
+        processor = VideoProcessor(self._config.video, self._config.vlm)
+        return await processor.process(
+            url, output_dir,
+            audio_only=audio_only,
+            video_only=video_only,
+        )

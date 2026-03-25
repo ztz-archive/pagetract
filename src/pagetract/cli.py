@@ -14,7 +14,7 @@ from rich.table import Table
 
 app = typer.Typer(
     name="pagetract",
-    help="pagetract — 高精度 PDF 文档转 Markdown 系统",
+    help="pagetract — 让大模型读懂一切文档",
     no_args_is_help=True,
 )
 console = Console()
@@ -149,6 +149,86 @@ def serve(
     from pagetract.api.app import create_app
     api_app = create_app(cfg)
     uvicorn.run(api_app, host=host, port=port)
+
+
+# ============================================================
+# video 子命令
+# ============================================================
+
+@app.command()
+def video(
+    url: str = typer.Argument(..., help="B站视频 URL"),
+    output_dir: Optional[str] = typer.Option(None, "-o", "--output", help="输出目录"),
+    config: Optional[str] = typer.Option(None, "--config", help="配置文件路径"),
+    audio_only: bool = typer.Option(False, "--audio-only", help="仅音频转录"),
+    video_only: bool = typer.Option(False, "--video-only", help="仅视频理解"),
+    model: Optional[str] = typer.Option(None, "--model", help="VLM 模型名称"),
+    stt_model: Optional[str] = typer.Option(None, "--stt-model", help="STT 模型名称"),
+    max_frames: Optional[int] = typer.Option(None, "--max-frames", help="最大关键帧数"),
+    frame_interval: Optional[int] = typer.Option(None, "--frame-interval", help="关键帧间隔(秒)"),
+    log_level: str = typer.Option("info", "--log-level", help="日志级别"),
+):
+    """将B站视频转换为文字（音频转录 + 视频理解）"""
+    import asyncio
+    import logging
+
+    logging.basicConfig(
+        level=getattr(logging, log_level.upper(), logging.INFO),
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    )
+
+    from pagetract.config import load_config
+
+    overrides: dict = {}
+    if model:
+        overrides.setdefault("vlm", {})["model"] = model
+    if stt_model:
+        overrides.setdefault("video", {})["stt_model"] = stt_model
+    if max_frames is not None:
+        overrides.setdefault("video", {})["max_key_frames"] = max_frames
+    if frame_interval is not None:
+        overrides.setdefault("video", {})["frame_interval_seconds"] = frame_interval
+
+    cfg = load_config(config_path=config, overrides=overrides if overrides else None)
+    output_dir = output_dir or cfg.general.output_dir
+
+    from pagetract.core.video_processor import VideoProcessor
+
+    processor = VideoProcessor(cfg.video, cfg.vlm)
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
+    ) as progress:
+        task = progress.add_task("Processing video...", total=None)
+
+        def on_progress(info: dict):
+            stage = info.get("stage", "")
+            progress.update(task, description=stage)
+
+        processor.set_progress_callback(on_progress)
+
+        result = asyncio.get_event_loop().run_until_complete(
+            processor.process(url, output_dir, audio_only=audio_only, video_only=video_only)
+        )
+
+    # 输出结果
+    console.print()
+    title = result.video_info.get("title", "unknown")
+    console.print(f"[bold green]Done![/bold green]  Video: {title}")
+    console.print()
+
+    table = Table(title="Video Conversion Results")
+    table.add_column("Output")
+    table.add_column("Path")
+
+    if result.audio_markdown_path:
+        table.add_row("Audio transcript", result.audio_markdown_path)
+    if result.video_markdown_path:
+        table.add_row("Video understanding", result.video_markdown_path)
+
+    console.print(table)
 
 
 # ============================================================
@@ -287,6 +367,19 @@ def doctor():
         checks.append(("deskew", "available", True))
     except ImportError:
         checks.append(("deskew", "not installed (deskew unavailable)", None))
+
+    # yt-dlp (video feature)
+    import shutil
+    if shutil.which("yt-dlp"):
+        checks.append(("yt-dlp", "available", True))
+    else:
+        checks.append(("yt-dlp", "not installed (video feature unavailable)", None))
+
+    # ffmpeg (video feature)
+    if shutil.which("ffmpeg"):
+        checks.append(("ffmpeg", "available", True))
+    else:
+        checks.append(("ffmpeg", "not installed (video/audio processing unavailable)", None))
 
     # VLM API
     try:

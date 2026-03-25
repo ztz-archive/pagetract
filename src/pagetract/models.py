@@ -251,3 +251,18 @@ class CostEstimate:
     estimated_api_calls: int = 0
     estimated_cost_yuan: float = 0.0
     estimated_time_seconds: float = 0.0
+
+
+# ============================================================
+# 视频转换结果
+# ============================================================
+
+@dataclass
+class VideoConversionResult:
+    """视频转换结果（音频转录 + 视频理解）"""
+    audio_markdown: str = ""
+    video_markdown: str = ""
+    video_info: dict[str, Any] = field(default_factory=dict)
+    output_dir: str = ""
+    audio_markdown_path: str = ""
+    video_markdown_path: str = ""
